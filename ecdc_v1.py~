@@ -23,8 +23,8 @@ print("Client: ",client_sock)
 dataset=pd.read_csv('dataset.csv')
 x_s21=dataset.iloc[:,:2]
 x_s31=dataset.iloc[:,:2]
-y_s21=dataset.iloc[:,3]
-y_s31=dataset.iloc[:,4]
+y_s21=dataset.iloc[:,2:3]
+y_s31=dataset.iloc[:,3:4]
 #Feature scaling.
 x_s21_train,x_s21_test,y_s21_train,y_s21_test=train_test_split(x_s21,y_s21,test_size=0.33,random_state=1)
 x_s31_train,x_s31_test,y_s31_train,y_s31_test=train_test_split(x_s31,y_s31,test_size=0.33,random_state=1)
@@ -48,6 +48,7 @@ while True:
     data=client_sock.recv(1024)
     data=data.decode("utf-8")
     print("Data comes: ",data)
+    errmsg="-"   
     #Preparing the incoming data for using in the prediction part.
     if(data!="exit"):
         #The data will split from comma to list.The first element of the list is freq and the second is voltage.
@@ -56,21 +57,27 @@ while True:
         volt=float(volt)
         print("Frequency: ",freq)
         print("Voltage: ",volt)
-        lst=[volt,freq]
-        #TODO 
-        #The PWM part will be added.
-        #The data will prepared for using in the predict function.
-        wannapredict=np.reshape(lst,(1,2))
-        pred_res_s21=rf_s21.predict(wannapredict)
-        pred_res_s31=rf_s31.predict(wannapredict)
-        print("The predicted S21 value is equal to: ",pred_res_s21)
-        print("The predicted S31 value is equal to: ",pred_res_s31)
-        total_pred=pred_s21+","+pred_s31
-        print(total_pred)
-        client_sock.send(total_pred)
-    if(volt>15):
-        volt=15
-        client_sock.send("The voltage value must be lower then 15 V.")
+        if(volt<=15):            
+            lst=[volt,freq]
+            #TODO 
+            #The PWM part will be added.
+            #The data will prepared for using in the predict function.
+            wannapredict=np.reshape(lst,(1,2))
+            pred_res_s21=rf_s21.predict(wannapredict)
+            pred_res_s31=rf_s31.predict(wannapredict)
+            print("The predicted S21 value is equal to: ",pred_res_s21)
+            print("The predicted S31 value is equal to: ",pred_res_s31)
+            total_pred=str(pred_res_s21)+","+str(pred_res_s31)+","+errmsg
+            print(total_pred)
+            client_sock.send(total_pred)
+        #Check if the voltage exceeds the boundary.And send the error message.
+        #FIXME
+        elif(volt>15):
+            volt=15
+            errmsg="The voltage value must be lower than 15 V."
+            client_sock.send("-,-,"+errmsg)
+    #Normally the data will get from Bluetooth with comma but for closing the connection another function has been written in Android Studio part.
+    #Close the connection.
     if(data=="exit"):
         client_sock.send("Connection closed.")
         print("Exit.")
@@ -78,8 +85,8 @@ while True:
         break
 DC_PWM.stop()
 GPIO.cleanup()
-client_socket.close()
-server_socket.close()
+client_sock.close()
+server_sock.close()
         
 
 
@@ -87,5 +94,10 @@ server_socket.close()
 
 
         
+
+
+
+
+
 
 
